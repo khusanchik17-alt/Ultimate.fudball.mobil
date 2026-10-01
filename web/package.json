@@ -1,0 +1,18 @@
+{
+  "name": "ultimate-football-mobile-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ultimate Football Mobile — web core of the 3D football game (bundled into the Android APK)",
+  "type": "module",
+  "scripts": {
+    "build": "node ./scripts/build.mjs",
+    "watch": "node ./scripts/build.mjs --watch",
+    "serve": "node ./scripts/serve.mjs"
+  },
+  "dependencies": {
+    "three": "0.160.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.21.5"
+  }
+}
