@@ -1,5 +1,11 @@
 name: Android APK Build
 
+# NOTE: GitHub only reads workflows from .github/workflows/.
+# Activate CI once with your own account (repo-owner rights required):
+#
+#   mkdir -p .github/workflows && cp ci/android-build.yml .github/workflows/ && \
+#   git add .github/workflows && git commit -m "ci: enable apk build" && git push
+#
 # Builds the game web bundle (if needed) and the Android APK.
 # Artifacts:
 #   - GitHub Actions artifacts (debug + release APK)

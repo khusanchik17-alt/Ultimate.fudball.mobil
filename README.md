@@ -11,16 +11,18 @@ generated procedurally in code.
 
 ## 📦 Getting the APK (3 ways)
 
-### 1. GitHub Actions (recommended)
-Pushing to the repo (or pressing **Run workflow** in *Actions → Android APK Build*)
-builds both `debug` and `release` APKs. Results land in:
+An installable, release-signed APK is always available in
+**`artifacts/ultimate-football-mobile.apk`** (rebuilt by the scripts/CI below).
 
-- **GitHub Actions artifacts** (`ufm-apk`) — download from the workflow run page,
-- **`artifacts/` folder** — the workflow commits the latest APKs back to the branch:
-  - `artifacts/ultimate-football-mobile.apk` (debug build, installable)
-  - `artifacts/ultimate-football-mobile-release.apk` (release, signed with demo key)
+### 1. One-script local build (no Android Studio needed)
+Self-downloads JDK 17 + aapt2 + android.jar + d8 + apksigner from npm, then
+builds → zipaligns → signs the APK:
 
-### 2. Build locally (Android Studio / CLI)
+```bash
+./scripts/build_apk.sh        # → artifacts/ultimate-football-mobile.apk
+```
+
+### 2. Gradle build (Android Studio / CI standard)
 Requires **JDK 17** and the **Android SDK** (platform 34). Gradle downloads the rest.
 
 ```bash
@@ -32,6 +34,18 @@ cd ../android
 ./gradlew assembleDebug          # → app/build/outputs/apk/debug/app-debug.apk
 ./gradlew assembleRelease        # → app/build/outputs/apk/release/app-release.apk
 ```
+
+### 3. GitHub Actions
+The workflow ships as `ci/android-build.yml`. GitHub only executes workflows from
+`.github/workflows/`, so the repo owner enables it once (needs owner rights):
+
+```bash
+mkdir -p .github/workflows && cp ci/android-build.yml .github/workflows/
+git add .github/workflows && git commit -m "ci: enable apk build" && git push
+```
+
+After that, every push builds debug + release APKs, uploads them as the `ufm-apk`
+artifact **and** commits them back to `artifacts/` on the branch.
 
 ### 3. Install on the phone
 1. Copy `artifacts/ultimate-football-mobile.apk` to the phone.
