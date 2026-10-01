@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ufm_navy">#050B14</color>
+    <color name="ufm_navy_light">#0C1F33</color>
+    <color name="ufm_teal">#0FD6BE</color>
+    <color name="ufm_gold">#FFC940</color>
+    <color name="icon_background">#081422</color>
+</resources>

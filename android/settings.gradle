@@ -1,0 +1,29 @@
+// Ultimate Football Mobile - Android project
+//
+// This is a standard Gradle/Android Studio project wrapping the WebGL game.
+// The web bundle (android/assets/www) is produced by `npm run build` from the
+// repository root - run that before building the APK.
+//
+//   ./gradlew assembleRelease     -> android/app/build/outputs/apk/release/app-release.apk
+//   ./gradlew assembleDebug       -> android/app/build/outputs/apk/debug/app-debug.apk
+//
+// See ../README.md ("Building the APK") for the full walkthrough.
+
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "UltimateFootballMobile"
+include ':app'

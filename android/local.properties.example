@@ -1,0 +1,3 @@
+# Copy to local.properties for command-line builds outside Android Studio.
+# (Android Studio and the Gradle wrapper create this file automatically.)
+sdk.dir=/path/to/Android/Sdk

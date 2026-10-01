@@ -1,0 +1,23 @@
+{
+  "root": true,
+  "env": { "browser": true, "es2022": true },
+  "overrides": [{ "files": ["tools/*.mjs", "tests/*.mjs"], "env": { "node": true } }],
+  "parserOptions": { "ecmaVersion": 2022, "sourceType": "module" },
+  "globals": {
+    "UFMNative": "readonly",
+    "THREE": "readonly"
+  },
+  "rules": {
+    "no-undef": "error",
+    "no-const-assign": "error",
+    "no-dupe-keys": "error",
+    "no-dupe-args": "error",
+    "no-unreachable": "error",
+    "no-unsafe-negation": "error",
+    "no-cond-assign": "error",
+    "no-redeclare": "error",
+    "no-self-assign": "error",
+    "valid-typeof": "error",
+    "use-isnan": "error"
+  }
+}
