@@ -41,7 +41,6 @@ export class MatchGame {
     this.joy = { x: 0, y: 0, active: false };
     this.buttons = {};              // button id -> held
     this.controlled = null;
-    this.lastShootTap = -10;
     this.shootCharge = -1;          // -1 idle, >=0 charging
     this.passHoldStart = -1;
     this.pressHeld = false;
