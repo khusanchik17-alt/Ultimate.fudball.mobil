@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Rename the game here (and in web/src/core/i18n.js + package.json). -->
+    <string name="app_name">Ultimate Football</string>
+    <string name="app_tagline">Mobile</string>
+</resources>

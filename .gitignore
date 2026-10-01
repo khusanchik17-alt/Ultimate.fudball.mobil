@@ -1,0 +1,25 @@
+# Build outputs. `build/` is scratch space; `artifacts/` is where the CI
+# workflow publishes the signed APK so it can be downloaded from the repo.
+/build/
+/out/
+*.ap_
+*.aab
+*.dex
+*.class
+!/artifacts/*.apk
+# generated bundle (npm run build writes it; kept out of source control)
+/web/game.bundle.js
+/android/assets/www/
+/toolchain/node_modules/
+node_modules/
+/android/gen/
+/android/obj/
+/android/bin/
+.gradle/
+local.properties
+*.iml
+.idea/
+.DS_Store
+
+__pycache__/
+*.pyc

@@ -1,0 +1,77 @@
+// Ultimate Football Mobile - app module.
+//
+// Pure framework APIs (no third-party dependencies), so the build only needs
+// the Android Gradle Plugin + the platform SDK.
+plugins {
+    id 'com.android.application'
+}
+
+// Optional signing config. `keystore.properties` is committed for the public
+// demo build so that everybody can install/update the same APK; replace it with
+// your own keystore (and keep it secret) before publishing on Google Play.
+def keystoreFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystoreFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystoreFile))
+}
+
+android {
+    namespace 'com.ufmstudio.ultimatefootball'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.ufmstudio.ultimatefootball'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+        resValue 'string', 'app_version_name', '1.0.0'
+    }
+
+    signingConfigs {
+        release {
+            if (keystoreFile.exists()) {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+                enableV1Signing true
+                enableV2Signing true
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            signingConfig keystoreFile.exists() ? signingConfigs.release : signingConfigs.debug
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            versionNameSuffix '-debug'
+            applicationIdSuffix '.debug'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // Keep the game bundle and textures uncompressed: faster first paint and
+    // the WebView can memory-map them from the APK.
+    androidResources {
+        noCompress 'js', 'html', 'css', 'json', 'png', 'jpg', 'ttf', 'ogg', 'mp3'
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+        warningsAsErrors false
+    }
+}
+
+dependencies {
+    // Intentionally empty: the game shell only uses Android framework APIs.
+}

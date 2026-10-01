@@ -1,0 +1,123 @@
+# ------------------------------------------------------------------------------
+# Ultimate Football Mobile - Android APK build
+#
+# Produces a signed, installable release APK and a debug APK:
+#   * uploaded as workflow artifacts (Actions -> run -> Artifacts)
+#   * committed back to `artifacts/` so the file can be downloaded straight
+#     from the repository without going through the Actions UI
+#
+# Run it from the Actions tab ("Android Build" -> Run workflow) or push to
+# `main`. Every dependency (Node, JDK 17, Android SDK 34) is set up by the job.
+# ------------------------------------------------------------------------------
+name: Android Build
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'artifacts/**'
+      - 'docs/**'
+      - '**.md'
+  workflow_dispatch:
+    inputs:
+      build_debug:
+        description: 'Also build the debug APK'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install JS dependencies
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+
+      - name: Run logic test suite
+        run: npm test
+
+      - name: Bundle the game (web/src -> android/assets/www)
+        run: npm run build
+
+      - name: Check the Android shell against the SDK API index
+        run: python3 tools/check_android_api.py
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-34 build-tools;34.0.0 platform-tools'
+
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null || true
+
+      - name: Build release + debug APK
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon --stacktrace assembleRelease
+          if [ "${{ github.event_name != 'workflow_dispatch' || inputs.build_debug }}" != "false" ]; then
+            ./gradlew --no-daemon assembleDebug
+          fi
+
+      - name: Collect APKs
+        run: |
+          mkdir -p build artifacts
+          cp android/app/build/outputs/apk/release/app-release.apk "artifacts/UltimateFootballMobile-release.apk"
+          cp "artifacts/UltimateFootballMobile-release.apk" "build/UltimateFootballMobile-release.apk"
+          if [ -f android/app/build/outputs/apk/debug/app-debug.apk ]; then
+            cp android/app/build/outputs/apk/debug/app-debug.apk "artifacts/UltimateFootballMobile-debug.apk"
+          fi
+          ls -lh build artifacts
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: UltimateFootballMobile-release-apk
+          path: build/UltimateFootballMobile-release.apk
+          if-no-files-found: error
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('artifacts/UltimateFootballMobile-debug.apk') != '' }}
+        with:
+          name: UltimateFootballMobile-debug-apk
+          path: artifacts/UltimateFootballMobile-debug.apk
+          if-no-files-found: warn
+
+      - name: Publish the APK back into the repository
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "UFM Build Bot"
+          git config user.email "build-bot@users.noreply.github.com"
+          git add -f artifacts/UltimateFootballMobile-release.apk
+          [ -f artifacts/UltimateFootballMobile-debug.apk ] && git add -f artifacts/UltimateFootballMobile-debug.apk || true
+          if git diff --cached --quiet; then
+            echo "APK unchanged - nothing to publish."
+          else
+            git commit -m "build: publish signed APK ($(date -u +%Y-%m-%d)) [skip ci]"
+            git push
+          fi
