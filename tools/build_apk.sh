@@ -45,23 +45,26 @@ if [ ! -x "$TOOLS/aapt2" ]; then
 fi
 
 # ---------------------------------------------------------------- web bundle
-if [ ! -f android/app/src/main/assets/www/app.js ]; then
-  (cd web && npm ci --no-audit --no-fund && npm run build)
+if [ ! -f android/app/src/main/assets/www/game.bundle.js ]; then
+  echo "[apk] bundling the game (npm run build) …"
+  npm run build
 fi
 
 # ---------------------------------------------------------------- pipeline
 rm -rf "$B" && mkdir -p "$B/gen" "$B/classes" "$B/dex"
 echo "[apk] aapt2 compile + link"
 "$TOOLS/aapt2" compile --dir android/app/src/main/res -o "$B/res.zip"
-sed 's#<manifest #<manifest package="com.ufm.ultimatefootball" #' \
+# Gradle injects these; the SDK-less pipeline has to stamp them explicitly.
+sed -e 's#<manifest #<manifest package="com.ufmstudio.ultimatefootball" android:versionCode="1" android:versionName="1.0.0" #' \
   android/app/src/main/AndroidManifest.xml > "$B/AndroidManifest.xml"
 "$TOOLS/aapt2" link -o "$B/base.apk" -I "$TOOLS/android.jar" \
   --manifest "$B/AndroidManifest.xml" --java "$B/gen" --auto-add-overlay "$B/res.zip" \
+  --min-sdk-version 24 --target-sdk-version 34 \
   -A android/app/src/main/assets
 
 echo "[apk] javac"
 "$J/javac" -nowarn -encoding UTF-8 -classpath "$TOOLS/android.jar" -d "$B/classes" \
-  android/app/src/main/java/com/ufm/ultimatefootball/MainActivity.java \
+  $(find android/app/src/main/java -name '*.java') \
   $(find "$B/gen" -name '*.java')
 
 echo "[apk] d8 → classes.dex"
@@ -77,14 +80,19 @@ z.write(sys.argv[3], 'classes.dex', zipfile.ZIP_DEFLATED)
 z.close()
 EOF
 
-python3 scripts/zipalign.py "$B/unsigned.apk" "$B/aligned.apk"
+python3 tools/zipalign.py "$B/unsigned.apk" "$B/aligned.apk"
 
 echo "[apk] signing"
 "$J/java" -jar "$TOOLS/apksigner.jar" sign \
-  --ks android/release.keystore.p12 --ks-type PKCS12 \
-  --ks-pass pass:ufm2026 --ks-key-alias ufm --key-pass pass:ufm2026 \
-  --v1-signing-enabled true --v2-signing-enabled true \
-  --out artifacts/ultimate-football-mobile.apk "$B/aligned.apk"
+  --ks android/ufm-demo.keystore --ks-type JKS \
+  --ks-pass pass:ufm-demo-pass --ks-key-alias ufm --key-pass pass:ufm-demo-pass \
+  --v1-signing-enabled true --v2-signing-enabled true --v4-signing-enabled false \
+  --out artifacts/UltimateFootballMobile-release.apk "$B/aligned.apk"
 
-"$J/java" -jar "$TOOLS/apksigner.jar" verify artifacts/ultimate-football-mobile.apk
-echo "[apk] DONE → artifacts/ultimate-football-mobile.apk"
+"$J/java" -jar "$TOOLS/apksigner.jar" verify --print-certs artifacts/UltimateFootballMobile-release.apk
+rm -f artifacts/UltimateFootballMobile-release.apk.idsig
+echo "[apk] verifying the manifest, resources and packaged web bundle …"
+"$TOOLS/aapt2" dump badging artifacts/UltimateFootballMobile-release.apk \
+  | grep -E "^(package|sdkVersion|targetSdkVersion|application-label:|launchable-activity)" || true
+ls -lh artifacts/UltimateFootballMobile-release.apk
+echo "[apk] DONE → artifacts/UltimateFootballMobile-release.apk"

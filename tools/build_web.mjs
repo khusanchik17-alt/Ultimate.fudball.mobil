@@ -7,7 +7,7 @@
  *   node tools/build_web.mjs --watch    # rebuild on change (dev)
  *   node tools/build_web.mjs --dev      # unminified bundle with sourcemap
  *
- * Output: android/assets/www/game.bundle.js  (+ index.html / styles copied by --copy)
+ * Output: android/app/src/main/assets/www/game.bundle.js  (+ index.html / styles copied by --copy)
  */
 import { build, context } from 'esbuild';
 import { cpSync, mkdirSync, existsSync, readdirSync, statSync, copyFileSync } from 'node:fs';
@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const WEB = join(ROOT, 'web');
-const OUT_DIR = join(ROOT, 'android', 'assets', 'www');
+const OUT_DIR = join(ROOT, 'android', 'app', 'src', 'main', 'assets', 'www');
 
 const watch = process.argv.includes('--watch');
 const dev = process.argv.includes('--dev');

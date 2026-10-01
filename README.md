@@ -130,10 +130,12 @@ android/                 native Android project (Gradle)
 └── keystore.properties    demo signing config (see "Release signing")
 
 tools/                   build + test tooling (Node/Python, no global installs)
-├── build_web.mjs        esbuild bundler -> android/assets/www/game.bundle.js
+├── build_apk.sh         SDK-less APK pipeline (npm toolchain -> signed APK)
+├── build_web.mjs        esbuild bundler -> android/app/src/main/assets/www/game.bundle.js
 ├── serve.mjs            zero‑dependency static server for desktop preview
 ├── make_icons.py        draws the launcher icons, adaptive icon and splash art
 ├── sim-report.mjs       CPU‑vs‑CPU balance report over N matches
+├── zipalign.py          pure-python zipalign used by build_apk.sh
 ├── check_android_api.py validates the Java shell against the Android SDK API
 └── smoke-dom.mjs        boots the real app in headless jsdom (WebGL/CSS stubbed)
 
@@ -161,7 +163,7 @@ Requirements: **Node.js 18+** (tested on Node 20/22) and npm.
 git clone https://github.com/khusanchik17-alt/Ultimate.fudball.mobil.git
 cd Ultimate.fudball.mobil
 npm install            # three.js + esbuild (dev-only dependencies)
-npm run build          # bundles web/src -> android/assets/www + web/game.bundle.js
+npm run build          # bundles web/src -> android/app/src/main/assets/www + web/game.bundle.js
 npm run serve          # open http://localhost:3000 in a desktop browser
 ```
 
@@ -179,13 +181,25 @@ node tools/sim-report.mjs 3     # CPU-vs-CPU balance report (3 matches per diffi
 
 ## Build the APK
 
-Two ways — pick whichever fits your machine.
+### A. One command, no Android SDK (recommended)
 
-### A. GitHub Actions (no local Android SDK needed)
+`tools/build_apk.sh` builds a **signed, installable APK** with a self-contained
+toolchain that it downloads from npm — a JDK 17, `aapt2`, `d8`, `apksigner` and
+`android.jar`. You only need **Node.js 18+**, **Python 3** and `curl`:
 
-The APK is built in the cloud. See [Get the prebuilt APK](#get-the-prebuilt-apk).
+```bash
+npm install
+npm test                    # 38 gameplay/unit checks
+npm run build               # bundle web/src -> android/app/src/main/assets/www
+bash tools/build_apk.sh     # -> artifacts/UltimateFootballMobile-release.apk
+```
 
-### B. Locally with Android Studio or the Android SDK
+The script compiles the Java shell, packages the resources and the game bundle,
+zipaligns and signs the APK (v1 + v2 signatures) and verifies the result with
+`apksigner` + `aapt2 dump badging`. The first run downloads ~150 MB of toolchain
+into `.tools/` (git-ignored); later runs are a few seconds.
+
+### B. Gradle / Android Studio (standard Android build)
 
 Requirements:
 
@@ -194,15 +208,13 @@ Requirements:
 | Node.js | 18+ (20 LTS recommended) | builds the JS bundle |
 | JDK | **17** (Gradle 8.2 + AGP 8.2.2 require 17) | Android Studio ships one |
 | Android SDK Platform | **API 34** | `compileSdk`/`targetSdk` 34, `minSdk` 24 (Android 7.0) |
-| Android Build‑Tools | **34.0.0** | installed by the SDK manager |
+| Android Build-Tools | **34.0.0** | installed by the SDK manager |
 | Gradle | *not needed locally* | the Gradle 8.2 wrapper is committed |
 
 ```bash
-# 1) bundle the game into the Android assets
 npm install
-npm run build
+npm run build                  # required first: fills android/app/src/main/assets/www
 
-# 2) build the APK (Gradle downloads itself through the wrapper)
 cd android
 ./gradlew assembleRelease      # signed release APK
 ./gradlew assembleDebug        # debug APK
@@ -215,8 +227,6 @@ android/app/build/outputs/apk/release/app-release.apk
 android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Copy it wherever you like, e.g. `cp android/app/build/outputs/apk/release/app-release.apk build/`.
-
 If the SDK is not auto-detected, create `android/local.properties`:
 
 ```properties
@@ -224,38 +234,42 @@ sdk.dir=/path/to/Android/Sdk
 ```
 
 **Android Studio route:** open the `android/` folder (`File → Open`), let it sync
-(it will use the committed wrapper), then `Build → Build Bundle(s)/APK(s) →
-Build APK(s)`. Remember to run `npm run build` first, otherwise the APK will ship an
-older bundle.
+(it uses the committed wrapper), then `Build → Build Bundle(s)/APK(s) → Build APK(s)`.
+Remember to run `npm run build` first so the APK ships the current bundle.
 
 ## Get the prebuilt APK
 
-The project ships a GitHub Actions workflow that builds **and publishes** a signed APK:
+A signed, installable **release APK is already committed in this repository**:
 
-1. **Actions tab → “Android Build” → Run workflow** (branch `main`). This builds the
-   release + debug APK, uploads them as artifacts and commits the release APK back
-   into the repository.
-2. **Download without the Actions UI:** after the run, the APK is committed to
-   [`artifacts/UltimateFootballMobile-release.apk`](artifacts/) — open that file on
-   GitHub and press **Download** (or `git clone` and use it from disk).
-3. **Workflow artifacts:** Actions → select the run → *Artifacts* →
-   `UltimateFootballMobile-release-apk`.
+```
+artifacts/UltimateFootballMobile-release.apk      (≈ 425 KB, version 1.0.0)
+```
 
-> The workflow lives in `ci/android-build.yml`. Copy it to `.github/workflows/`
-> once (or push it with a token/App that has the `workflows` permission) and GitHub
-> will start running it on every push to `main`:
-> `mkdir -p .github/workflows && cp ci/android-build.yml .github/workflows/android-build.yml`
+* **From GitHub:** open that file in the repository and press **Download**
+  (the *Raw* / *Download* button).
+* **From a clone:** `git clone …` and use `artifacts/UltimateFootballMobile-release.apk`
+  directly.
+* **Rebuild it:** `npm install && npm run build && bash tools/build_apk.sh`
+  (see [Build the APK](#build-the-apk) — no Android SDK needed).
+
+The CI workflow keeps this file up to date: it rebuilds the APK, uploads it as a
+workflow artifact **and** commits the fresh APK back to `artifacts/`.
+
+> The workflow template lives in `ci/android-build.yml` (GitHub only runs files in
+> `.github/workflows/`, which requires a token/App with the `workflows` permission).
+> To activate it:
+> `mkdir -p .github/workflows && cp ci/android-build.yml .github/workflows/android-build.yml && git add .github/workflows && git commit -m "ci: enable apk build" && git push`
 
 ## Install the APK on an Android phone
 
-1. Copy `UltimateFootballMobile-release.apk` (or `app-release.apk`) to the phone
+1. Copy `artifacts/UltimateFootballMobile-release.apk` (or `app-release.apk`) to the phone
    (USB, Google Drive, Telegram, e‑mail — anything).
 2. Open it with the phone's **Files** app. Android will ask to allow installing
    apps from this source: enable **“Allow from this source”** for the Files/browser
    app (Android 8+: *Settings → Apps → Special access → Install unknown apps*).
 3. Tap **Install**, then **Open**. The game appears in the launcher as
    **Ultimate Football**.
-4. The debug APK (`UltimateFootballMobile-debug.apk`, package
+4. The debug build (`./gradlew assembleDebug`, package
    `com.ufmstudio.ultimatefootball.debug`) can be installed side by side with the
    release build.
 
@@ -288,6 +302,7 @@ phone from ~2012 onwards) and roughly 60 MB of free storage.
 | `node tools/smoke-dom.mjs` | Boots the real application in headless jsdom with stubbed WebGL/Audio: visits all 10 screens, builds the squad UI, plays a live match with the actual renderer + HUD, fires every control, runs a penalty shootout, switches languages, writes a save. Fails on any runtime error |
 | `python3 tools/check_android_api.py` | Parses the Android SDK API index (`tools/android-api-index.json`) and verifies every `android.*` import, constant, nested class and `@Override` used by the Java shell really exists in API 33 |
 | `node tools/sim-report.mjs 3` | Prints CPU‑vs‑CPU balance metrics (goals, shots, possession, saves, fouls, MOTM) so gameplay tuning stays honest |
+| `bash tools/build_apk.sh` | Full APK build: bundles, compiles the Java shell, packages assets, zipaligns, signs and then verifies the APK (`apksigner verify`, `aapt2 dump badging`) |
 
 Current balance targets (CPU vs CPU, 90 simulated minutes): ~3–4 goals per match,
 ~25 shots, ~75 % pass completion, save/corner/foul counters all non‑zero.

@@ -6,10 +6,12 @@
 *.aab
 *.dex
 *.class
-!/artifacts/*.apk
-# generated bundle (npm run build writes it; kept out of source control)
+# generated outputs (npm run build / tools/build_apk.sh create them)
 /web/game.bundle.js
-/android/assets/www/
+/android/app/src/main/assets/www/
+/.tools/
+# note: artifacts/*.apk IS tracked on purpose - it is the download of the game
+
 /toolchain/node_modules/
 node_modules/
 /android/gen/
